@@ -1,19 +1,18 @@
-
-from flask import Flask, request, jsonify
-import requests
 import os
 import json
+import requests
+from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
-@app.route('/')
-def home():
-    return "✅ TV Signal Bot API is running."
+@app.route("/")
+def health_check():
+    return jsonify({"status": "ok", "message": "tv-signal-bot is running."})
 
-@app.route('/analyze-with-xai', methods=['POST'])
+@app.route("/analyze-with-xai", methods=["POST"])
 def analyze_with_xai():
     data = request.json
-    print("🔍 Request:", data)
+    print("🔍 Request Received:", data)
 
     headers = {
         "Content-Type": "application/json",
@@ -29,8 +28,16 @@ def analyze_with_xai():
         "temperature": 0.7
     }
 
-    response = requests.post("https://api.x.ai/v1/chat/completions", json=payload, headers=headers)
-    return jsonify(response.json())
+    try:
+        response = requests.post("https://api.x.ai/v1/chat/completions", json=payload, headers=headers)
+        response.raise_for_status()
+        return jsonify(response.json())
+    except requests.exceptions.HTTPError as http_err:
+        print("HTTP error occurred:", http_err)
+        return jsonify({"error": str(http_err)}), response.status_code
+    except Exception as err:
+        print("Other error occurred:", err)
+        return jsonify({"error": str(err)}), 500
 
-if __name__ == '__main__':
-    app.run(debug=True)
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8080)
