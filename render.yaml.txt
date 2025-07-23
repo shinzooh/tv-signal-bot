@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: shinzooh-trade-api
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn -b 0.0.0.0:8080 main_flask_api:app  # استخدم gunicorn لـ production
