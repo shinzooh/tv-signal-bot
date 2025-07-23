@@ -3,4 +3,4 @@ services:
     name: tv-signal-bot
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn -b 0.0.0.0:8080 main_flask_api:app  # استخدم gunicorn
+    startCommand: uvicorn main:app --host 0.0.0.0 --port 10000
