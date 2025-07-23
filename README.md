@@ -1,21 +1,20 @@
+# Shinzooh Trade API
 
-# tv-signal-bot
+Trading analysis API using Flask + xAI (Grok-4) + JSON input/output.
 
-A Flask-based API that receives trading signals and sends them for analysis using the xAI Grok-4-0709 model.
+## Endpoint
 
-## Endpoints
+- `GET /`: تأكيد التشغيل.
 
-- `/`: Health check.
-- `/analyze-with-xai`: POST endpoint to analyze trading data via xAI API.
+- `POST /analyze-with-xai`: تحليل مباشر باستخدام xAI.
 
-## Setup
+## Environment Variables
 
-1. Add your XAI API key in `.env` or environment variables.
-2. Install dependencies:
-   ```
-   pip install -r requirements.txt
-   ```
-3. Run the app:
-   ```
-   python main.py
-   ```
+- `XAI_API_KEY=your-xai-api-key-here`
+
+## Usage
+
+```bash
+curl -X POST https://your-render-url/analyze-with-xai \
+-H "Content-Type: application/json" \
+-d '{"symbol": "XAUUSD", "frame": "15m", "data": "ما توقعك لحركة السعر القادمة؟"}'
