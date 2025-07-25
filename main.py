@@ -1,52 +1,59 @@
-from fastapi import FastAPI, HTTPException, Body
-import requests
-import os
+from fastapi import FastAPI
+from fastapi.responses import JSONResponse
+import requests  # لجلب البيانات من مصدر خارجي، مثل API للإشارات
+from werkzeug.urls import url_quote  # لو تحتاج تشفر روابط أو نصوص (من Flask legacy، لكن متوافق)
 
-app = FastAPI()
+app = FastAPI(
+    title="TV Signal Bot",
+    description="بوت لجلب إشارات التداول من TradingView أو مصادر مشابهة.",
+    version="1.0.0"
+)
 
+# Endpoint أساسي للترحيب والاختبار
 @app.get("/")
-async def root():
-    return {"message": "Shinzooh API ✅ جاهز"}  # حولتها JSON كاقتراح للاحترافية
+def read_root():
+    return {"message": "مرحباً في TV Signal Bot! السيرفر يعمل على FastAPI. جرب /signal لجلب إشارة."}
 
-@app.post("/analyze-with-xai")
-async def analyze_with_xai(body: dict = Body(...)):
-    symbol = body.get("symbol")
-    frame = body.get("frame")
-    data = body.get("data")
-    
-    if not all([symbol, frame, data]):
-        raise HTTPException(status_code=400, detail="البيانات الناقصة: يجب توفير symbol, frame, data")
-    
-    # بناء الـ prompt بناءً على البيانات (يمكن تخصيصه أكثر)
-    prompt = f"قم بتحليل حركة السعر لـ {symbol} في الإطار الزمني {frame}: {data}. أعطِ توقعاتك وأسبابك بالعربي."
-    
-    api_key = os.getenv("XAI_API_KEY")
-    if not api_key:
-        raise HTTPException(status_code=500, detail="مفتاح xAI API غير مضبوط في البيئة")
-    
-    url = "https://api.x.ai/v1/chat/completions"  # الـ endpoint الرسمي لـ xAI Grok API
-    
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json"
-    }
-    
-    payload = {
-        "model": "grok-beta",  # أو "grok-4" إذا كان متاحًا (غيّره حسب اشتراكك)
-        "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0.7,  # لتحكم في الإبداع (يمكن تعديله)
-        "max_tokens": 500  # حد أقصى للرد (لتجنب تكاليف عالية)
-    }
-    
+# Endpoint لجلب إشارة (افتراضي: جلب بيانات من API عام، غيّر الـ URL حسب احتياجك)
+@app.get("/signal")
+def get_signal(symbol: str = "BTCUSD"):  # يأخذ رمز افتراضي، ممكن تغييره عبر query param مثل ?symbol=ETHUSD
     try:
-        response = requests.post(url, headers=headers, json=payload)
-        response.raise_for_status()  # يرمي خطأ إذا فشل الطلب
-        result = response.json()
-        analysis = result["choices"][0]["message"]["content"]
-        return {"analysis": analysis.strip()}  # إرجاع التحليل نظيفًا
-    except requests.exceptions.RequestException as e:
-        raise HTTPException(status_code=500, detail=f"خطأ في الاتصال بـ xAI API: {str(e)}")
-    except KeyError:
-        raise HTTPException(status_code=500, detail="هيكل الرد من xAI غير متوقع")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"خطأ غير متوقع: {str(e)}")
+        # مثال: جلب بيانات من API عام (مثل CoinGecko للعملات، غيّرها لـ TradingView API لو عندك مفتاح)
+        api_url = f"https://api.coingecko.com/api/v3/simple/price?ids={url_quote(symbol.lower())}&vs_currencies=usd"
+        response = requests.get(api_url)
+        response.raise_for_status()  # يرفع خطأ لو الطلب فشل
+        
+        data = response.json()
+        if symbol.lower() in data:
+            price = data[symbol.lower()]['usd']
+            signal = "قوي" if price > 50000 else "ضعيف"  # منطق بسيط، غيّره حسب احتياجك (مثل تحليل حقيقي)
+            return {
+                "symbol": symbol,
+                "price": price,
+                "signal": signal,
+                "message": "الإشارة مستخرجة بنجاح!"
+            }
+        else:
+            return JSONResponse(status_code=404, content={"error": "الرمز غير موجود."})
+    
+    except requests.RequestException as e:
+        return JSONResponse(status_code=500, content={"error": f"خطأ في جلب البيانات: {str(e)}"})
+
+# Endpoint إضافي للصحة (health check)، مفيد للـ monitoring في Render
+@app.get("/health")
+def health_check():
+    return {"status": "healthy", "version": "1.0.0"}
+
+# إذا تحتاج endpoints أكثر، أضفها هنا، مثلاً:
+# @app.post("/custom-signal")
+# def custom_signal(data: dict):
+#     # كود لمعالجة بيانات واردة
+#     return {"result": "معالجة ناجحة"}
+
+# للتشغيل المحلي (تستينغ): 
+# في الـ terminal: uvicorn main:app --reload --host 0.0.0.0 --port 8000
+# ثم افتح http://localhost:8000/docs للواجهة Swagger
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=10000)  # للتشغيل في Render، لكن Render يستخدم الأمر الخارجي
