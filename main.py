@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 import requests  # لجلب البيانات من مصدر خارجي، مثل API للإشارات
-from werkzeug.urls import url_quote  # لو تحتاج تشفر روابط أو نصوص (من Flask legacy، لكن متوافق)
+from urllib.parse import quote  # بديل لـ url_quote، من Python القياسي (لا حاجة لـ werkzeug)
 
 app = FastAPI(
     title="TV Signal Bot",
@@ -19,7 +19,7 @@ def read_root():
 def get_signal(symbol: str = "BTCUSD"):  # يأخذ رمز افتراضي، ممكن تغييره عبر query param مثل ?symbol=ETHUSD
     try:
         # مثال: جلب بيانات من API عام (مثل CoinGecko للعملات، غيّرها لـ TradingView API لو عندك مفتاح)
-        api_url = f"https://api.coingecko.com/api/v3/simple/price?ids={url_quote(symbol.lower())}&vs_currencies=usd"
+        api_url = f"https://api.coingecko.com/api/v3/simple/price?ids={quote(symbol.lower())}&vs_currencies=usd"
         response = requests.get(api_url)
         response.raise_for_status()  # يرفع خطأ لو الطلب فشل
         
