@@ -10,6 +10,21 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# 🧠 Mapping بين الرموز (TradingView style) و CoinGecko IDs
+COINGECKO_MAPPING = {
+    "BTCUSD": "bitcoin",
+    "ETHUSD": "ethereum",
+    "XRPUSD": "ripple",
+    "DOGEUSD": "dogecoin",
+    "ADAUSD": "cardano",
+    "SOLUSD": "solana",
+    "DOTUSD": "polkadot",
+    "BNBUSD": "binancecoin",
+    "XAUUSD": "gold",  # مخصص يدوي، غير موجود فعليًا في CoinGecko
+    "LTCUSD": "litecoin"
+}
+
+# ✅ GET /
 @app.get("/")
 def read_root():
     return {
@@ -17,17 +32,24 @@ def read_root():
         "routes": ["/signal", "/analyze-with-xai", "/health"]
     }
 
+# ✅ GET /signal?symbol=BTCUSD
 @app.get("/signal")
 def get_signal(symbol: str = "BTCUSD"):
+    coingecko_id = COINGECKO_MAPPING.get(symbol.upper())
+    if not coingecko_id:
+        return JSONResponse(
+            status_code=404,
+            content={"error": f"الرمز {symbol} غير مدعوم حالياً. جرب BTCUSD، ETHUSD، DOGEUSD..."}
+        )
     try:
-        api_url = f"https://api.coingecko.com/api/v3/simple/price?ids={quote(symbol.lower())}&vs_currencies=usd"
+        api_url = f"https://api.coingecko.com/api/v3/simple/price?ids={quote(coingecko_id)}&vs_currencies=usd"
         response = requests.get(api_url)
         response.raise_for_status()
 
         data = response.json()
-        if symbol.lower() in data:
-            price = data[symbol.lower()]['usd']
-            signal = "قوي" if price > 50000 else "ضعيف"
+        if coingecko_id in data:
+            price = data[coingecko_id]['usd']
+            signal = "قوي" if price > 50000 else "ضعيف"  # منطق بسيط (ممكن تطويره لاحقًا)
             return {
                 "symbol": symbol,
                 "price": price,
@@ -35,15 +57,16 @@ def get_signal(symbol: str = "BTCUSD"):
                 "message": "الإشارة مستخرجة بنجاح!"
             }
         else:
-            return JSONResponse(status_code=404, content={"error": "الرمز غير موجود."})
-
+            return JSONResponse(status_code=404, content={"error": "الرمز غير موجود في CoinGecko."})
     except requests.RequestException as e:
         return JSONResponse(status_code=500, content={"error": f"خطأ في جلب البيانات: {str(e)}"})
 
+# ✅ GET /health
 @app.get("/health")
 def health_check():
     return {"status": "healthy", "version": "1.0.0"}
 
+# ✅ POST /analyze-with-xai
 @app.post("/analyze-with-xai")
 def analyze_with_xai(content: dict = Body(...)):
     try:
@@ -89,6 +112,7 @@ def analyze_with_xai(content: dict = Body(...)):
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
 
+# ✅ التشغيل المحلي
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=10000)
