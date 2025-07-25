@@ -1,5 +1,3 @@
 fastapi
 uvicorn[standard]
 requests==2.31.0
-werkzeug==2.2.3      # إصدار متوافق، يصلح 'url_quote'
-gunicorn==20.1.0     # للتشغيل production (فقط لو تحتاجه لاحقاً)
